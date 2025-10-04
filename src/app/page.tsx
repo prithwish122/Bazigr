@@ -1,5 +1,6 @@
 import ExpandableCards from "./components/Expandablecards"
 import { Navbar } from "./components/navbar"
+import WhyChooseUs from "./components/Whychooseus"
 
 export default function Page() {
   return (
@@ -13,6 +14,7 @@ export default function Page() {
         <p className="mt-5 text-pretty italic opacity-95 text-lg sm:text-xl md:text-2xl">Every move gets rewarded</p>
       </section>
       <ExpandableCards />
+      <WhyChooseUs/>
     </main>
   )
 }
