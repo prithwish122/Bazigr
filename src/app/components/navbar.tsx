@@ -31,7 +31,7 @@ export function Navbar() {
           {/* left logo + wordmark */}
           <div className="flex items-center gap-2 pl-1">
             <span aria-hidden className="logo-dot" style={{ width: 22, height: 22 }} />
-            <span className="text-sm md:text-base tracking-wide opacity-95">SKIPER-UI</span>
+            <span className="text-sm md:text-base tracking-wide opacity-95">Bazigr</span>
           </div>
 
           {/* right links + controls */}
