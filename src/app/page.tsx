@@ -1,4 +1,5 @@
 import ExpandableCards from "./components/Expandablecards"
+import HowItWorks from "./components/Howitworks"
 import { Navbar } from "./components/navbar"
 import WhyChooseUs from "./components/Whychooseus"
 
@@ -15,6 +16,7 @@ export default function Page() {
       </section>
       <ExpandableCards />
       <WhyChooseUs/>
+      <HowItWorks />
     </main>
   )
 }
