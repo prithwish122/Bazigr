@@ -3,7 +3,7 @@
 export default function WhyChooseUs() {
   return (
     <section className="py-20 px-4 ">
-     <h2 className="text-6xl text-white mb-[80px] tracking-tight text-center ">
+     <h2 className="text-6xl text-white mt-[50px] mb-[80px] tracking-tight text-center ">
             Why Choose Us?
           </h2>
 

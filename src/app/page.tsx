@@ -6,7 +6,7 @@ export default function Page() {
   return (
     <main className="min-h-screen">
       <Navbar />
-      <section className="relative mx-auto flex min-h-[70vh] w-[min(92vw,980px)] flex-col items-center justify-center text-center">
+      <section className="relative mx-auto flex min-h-[70vh] w-[min(92vw,980px)] flex-col items-center justify-center text-center mb-0">
         <h1 className="text-balance font-extrabold leading-[0.95] tracking-tight uppercase">
           <span className="block text-5xl sm:text-7xl md:text-8xl lg:text-9xl">Your Defi</span>
           <span className="mt-1 block text-5xl sm:text-7xl md:text-8xl lg:text-9xl">Reimagined</span>
