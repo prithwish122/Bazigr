@@ -36,25 +36,25 @@ if (!projectId) {
 // })
 
 const customNetwork = defineChain({
-  id: 656476,
+  id: 2484,
   caipNetworkId: 'eip155:123456789',
   chainNamespace: 'eip155',
-  name: 'EDU Chain Testnet',
+  name: 'U2U Testnet',
   nativeCurrency: {
     decimals: 18,
-    name: 'EDU',
-    symbol: 'EDU',
+    name: 'U2U',
+    symbol: 'U2U',
   },
   rpcUrls: {
     default: {
-      http: ['https://open-campus-codex-sepolia.drpc.org'],
+      http: ['https://rpc-nebulas-testnet.uniultra.xyz'],
       webSocket: [''],
     },
   },
   blockExplorers: {
     default: {
-      name: 'Core Testnet Explorer',
-      url: 'https://opencampus-codex.blockscout.com',
+      name: 'U2U Testnet Explorer',
+      url: 'https://testnet.u2uscan.xyz/',
     },
   },
   contracts: {
