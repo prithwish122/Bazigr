@@ -38,13 +38,7 @@ export function ConnectWalletModal() {
             </p>
           </div>
 
-          <Button
-            size="lg"
-            className="w-full bg-gradient-to-r from-[#C71585] to-[#B31373] hover:from-[#B31373] hover:to-[#C71585] text-white font-semibold rounded-lg py-6"
-          >
-            <Wallet className="w-5 h-5 mr-2" />
-            Connect Wallet
-          </Button>
+          <appkit-button />
 
           <button
             onClick={() => setIsOpen(false)}
