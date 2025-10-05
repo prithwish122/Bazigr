@@ -5,7 +5,7 @@ export default function TransferPage() {
   return (
     <>
       <ConnectWalletModal />
-      <div className="w-full">
+      <div className="w-full border-none">
         <Image
           src="/images/transfer-banner.png"
           alt="Transfer"
@@ -13,6 +13,7 @@ export default function TransferPage() {
           height={200}
           className="w-full h-auto"
           priority
+          
         />
       </div>
     </>
