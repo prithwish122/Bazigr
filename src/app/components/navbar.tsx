@@ -1,7 +1,6 @@
 "use client"
-
-import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
+import { LaunchAppButton } from "./Launch"
 import { cn } from "../lib/utils"
 
 export function Navbar() {
@@ -34,50 +33,29 @@ export function Navbar() {
             <span className="text-sm md:text-base tracking-wide opacity-95">Bazigr</span>
           </div>
 
-          {/* right links + controls */}
+          {/* right side - Launch App button and menu */}
           <div className="flex items-center gap-2">
-            <ul className="hidden md:flex items-center gap-5 pr-1 text-sm md:text-base opacity-90">
-              <li>
-                <Link href="#" className="hover:opacity-100 focus:opacity-100 outline-none">
-                  Pricing
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:opacity-100 focus:opacity-100 outline-none">
-                  Components
-                </Link>
-              </li>
-            </ul>
+            <LaunchAppButton />
 
-            {/* small rounded controls */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                aria-label="Command"
-                className="nav-control grid h-8 w-8 place-items-center text-sm"
-              >
-                <span aria-hidden>⌘</span>
-              </button>
-
-              <button
-                type="button"
-                aria-label="Open Menu"
-                aria-haspopup="dialog"
-                aria-expanded={open}
-                onClick={toggle}
-                className="nav-control grid h-8 w-8 place-items-center"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path
-                    d="M9 4H4v5M15 4h5v5M9 20H4v-5M20 20h-5v-5"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            </div>
+            {/* menu button */}
+            {/* <button
+              type="button"
+              aria-label="Open Menu"
+              aria-haspopup="dialog"
+              aria-expanded={open}
+              onClick={toggle}
+              className="nav-control grid h-8 w-8 place-items-center"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M9 4H4v5M15 4h5v5M9 20H4v-5M20 20h-5v-5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button> */}
           </div>
         </nav>
       </div>
