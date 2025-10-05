@@ -1,6 +1,11 @@
+"use client"
 import Image from "next/image"
 import { ConnectWalletModal } from "@/app/components/dashboard/connect-wallet-modal"
-import { TransferFlow} from "@/app/components/transfer/transfer-flow"
+import dynamic from "next/dynamic"
+
+const TransferBox = dynamic(() => import("@/app/components/transfer/transfer-box").then((m) => m.TransferBox), {
+  ssr: false,
+})
 
 export default function TransferPage() {
   return (
@@ -15,9 +20,9 @@ export default function TransferPage() {
           className="w-full h-auto"
           priority
         />
-         <div className="mx-auto mt-6 w-full max-w-3xl px-4 min-h-[560px]">
-          <TransferFlow />
-        </div>
+      </div>
+      <div className="px-4 py-6">
+        <TransferBox />
       </div>
     </>
   )
