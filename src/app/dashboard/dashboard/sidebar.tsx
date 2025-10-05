@@ -14,7 +14,7 @@ import {
   ChevronRight,
   LogOut,
 } from "lucide-react"
-import { cn } from "@/app/lib/utils"
+import { cn } from "@/lib/utils"
 
 const navItems = [
   { name: "Transfer", href: "/dashboard/transfer", icon: ArrowLeftRight },
