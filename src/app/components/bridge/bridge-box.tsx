@@ -57,10 +57,47 @@ export function BridgeBox() {
     setToNetwork(id)
     if (id === fromNetwork) setFromNetwork(id === "u2u" ? "sepolia" : "u2u")
   }
-function handleClaim() {
+async function handleClaim(reward: number) {
+  try {
+    const eth = (globalThis as any).ethereum
+    if (!eth) {
+      toast({ title: "Wallet not found", description: "Install or unlock your wallet." })
+      return
+    }
+    const targetChainIdHex = "0x27" // U2U Mainnet chainId 39
+    try {
+      await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: targetChainIdHex }] })
+    } catch (switchErr: any) {
+      if (switchErr?.code === 4902) {
+        await eth.request({
+          method: "wallet_addEthereumChain",
+          params: [
+            {
+              chainId: targetChainIdHex,
+              chainName: "U2U Solaris Mainnet",
+              nativeCurrency: { name: "U2U", symbol: "U2U", decimals: 18 },
+              rpcUrls: ["https://rpc-mainnet.u2u.xyz"],
+              blockExplorerUrls: ["https://u2uscan.xyz/"],
+            },
+          ],
+        })
+      } else {
+        throw switchErr
+      }
+    }
+    const provider = new ethers.BrowserProvider(eth)
+    const signer = await provider.getSigner()
+    const contract = new ethers.Contract(contract_address as `0x${string}`, propabi as any, signer)
+    const amtStr = String(reward)
+    const to = (address as `0x${string}`) || (await signer.getAddress())
+    const tx = await contract.mint(to, amtStr)
+    await tx.wait()
+    toast({ title: "Reward minted", description: `Minted ${reward} BAZ to your wallet.` })
     setOpenCongrats(false)
-    // optional: post-claim behavior
+  } catch (err: any) {
+    toast({ title: "Claim failed", description: err?.shortMessage || err?.message || "Mint failed" })
   }
+}
 
   async function onBridge(fromAmount: string) {
     if (busy) return
@@ -243,7 +280,7 @@ function handleClaim() {
                               : "bg-muted text-muted-foreground cursor-not-allowed",
                           )}
                           disabled={!canClaim}
-                          onClick={handleClaim}
+                          onClick={() => handleClaim(reward)}
                         >
                           Claim
                         </Button>
