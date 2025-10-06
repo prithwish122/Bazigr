@@ -47,6 +47,7 @@ function handleClaim() {
   }
 
   async function onBridge() {
+    
     if (busy) return
     setBusy(true)
     await new Promise((res) => setTimeout(res, 10_000)) // 10s timeout
@@ -103,10 +104,10 @@ function handleClaim() {
         <div className="p-5 md:p-6">
           <div className="text-sm font-medium text-foreground">To</div>
           <div className="mt-3 grid grid-cols-1 gap-3">
-            <Input
+            {/* <Input
               placeholder="To account (e.g., 0x...)"
               className="h-11 rounded-xl bg-background/30 border-border/40"
-            />
+            /> */}
             <div className="flex items-center justify-between gap-3">
               <Select value={toNetwork} onValueChange={handleToNetworkChange}>
                 <SelectTrigger className="h-11 w-[180px] rounded-xl bg-background/30 border-border/40">
