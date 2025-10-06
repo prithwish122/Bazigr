@@ -7,6 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/componen
 import { cn } from "@/app/lib/utils"
 import ScratchCard from "@/app/components/rewards/scratch-card"
 import { toast } from "../../toasts/use-toast"
+import { useWriteContract, usePublicClient } from "wagmi"
+import { useAppKitAccount } from "@reown/appkit/react"
+import propabi from "@/app/contract/abi.json"
 
 type Token = "U2U" | "BAZ"
 const TOKENS: Token[] = ["U2U", "BAZ"]
@@ -51,6 +54,13 @@ export function TransferBox() {
   const [reward, setReward] = React.useState<number>(() => Math.floor(Math.random() * 10) + 1)
   const [canClaim, setCanClaim] = React.useState(false)
 
+  const { address, isConnected } = useAppKitAccount()
+  const { writeContractAsync } = useWriteContract()
+  const publicClient = usePublicClient()
+
+  // U2U token contract (Bazigr)
+  const contract_address = "0xC345f186C6337b8df46B19c8ED026e9d64ab9F80"
+
   // keep tokens independent but default equal; no enforced difference needed on transfer
   React.useEffect(() => {
     // optional token sync logic could go here if needed
@@ -65,28 +75,67 @@ export function TransferBox() {
     setIsTransferring(false)
   }
 
-  function handleTransfer() {
+  async function handleTransfer() {
     if (isTransferring) return
-    setIsTransferring(true)
-    setCanClaim(false)
-
-    // simulate processing delay
-    setTimeout(() => {
-      toast({
-        title: "Transfer successful",
-        description: `${amount || 0} ${fromToken} sent from ${fromAccount || "From"} to ${toAccount || "To"}.`,
+    if (!isConnected || !address) {
+      toast({ title: "Wallet not connected", description: "Connect your wallet to transfer." })
+      return
+    }
+    if (!toAccount || !toAccount.startsWith("0x") || toAccount.length !== 42) {
+      toast({ title: "Invalid recipient", description: "Enter a valid 0x address." })
+      return
+    }
+    if (!amount || amount.includes(".") || Number(amount) <= 0) {
+      toast({ title: "Invalid amount", description: "Enter a positive whole number amount." })
+      return
+    }
+    try {
+      setIsTransferring(true)
+      setCanClaim(false)
+      // Call send on U2U token (contract multiplies by 10**18 internally)
+      const hash = await writeContractAsync({
+        abi: propabi as any,
+        functionName: "send",
+        address: contract_address as `0x${string}`,
+        args: [toAccount as `0x${string}`, amount],
       })
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash })
+      }
+      toast({ title: "Transfer successful", description: `${amount} BAZ sent to ${toAccount}.` })
       setReward(Math.floor(Math.random() * 10) + 1)
       setOpenCongrats(true)
+    } catch (err: any) {
+      toast({ title: "Transfer failed", description: err?.shortMessage || err?.message || "Transaction failed" })
+    } finally {
       setIsTransferring(false)
-    }, 5000)
+    }
   }
 
-  function handleClaim() {
-    setOpenCongrats(false)
+  async function handleClaim() {
+    if (!isConnected || !address) {
+      toast({ title: "Wallet not connected", description: "Connect your wallet to claim." })
+      return
+    }
+    try {
+      // mint reward tokens to the connected wallet
+      const hash = await writeContractAsync({
+        abi: propabi as any,
+        functionName: "mint",
+        address: contract_address as `0x${string}`,
+        args: [address as `0x${string}`, String(reward)],
+      })
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash })
+      }
+      toast({ title: "Cashback claimed", description: `Minted ${reward} BAZ to your wallet.` })
+      setOpenCongrats(false)
+    } catch (err: any) {
+      toast({ title: "Claim failed", description: err?.shortMessage || err?.message || "Transaction failed" })
+    }
   }
 
-  const isTransferDisabled = !fromAccount || !toAccount || Number(amount) <= 0 || isTransferring
+  const isTransferDisabled = !toAccount || Number(amount) <= 0 || isTransferring
 
   return (
     <div className="mx-auto w-full max-w-2xl">
