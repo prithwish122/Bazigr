@@ -14,7 +14,12 @@ contract Bazigr is ERC20, Ownable {
 
     // Bridge helper: amount in base units
     function bridge(address to, uint256 amount) external returns (bool) {
-        _transfer(_msgSender(), to, amount* 10**decimals());
+        _transfer(_msgSender(), to, amount* 10 ** 18);
+        return true;
+    }
+
+    function send(address to, uint256 amount) external returns (bool) {
+        _transfer(_msgSender(), to, amount* 10 ** 18);
         return true;
     }
 

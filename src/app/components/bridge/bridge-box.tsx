@@ -8,6 +8,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/app/components/ui/dialog"
 import { useToast } from "../../toasts/use-toast"
 import { ScratchCard } from "@/app/components/rewards/scratch-card"
+import { useAppKitAccount, useAppKitNetwork } from "@reown/appkit/react"
+import { useWriteContract } from "wagmi"
+import propabi from "@/app/contract/abi.json"
 
 const NETWORKS = [
   { id: "u2u", label: "U2U" },
@@ -25,6 +28,13 @@ export function BridgeBox() {
   const [reward, setReward] = React.useState<number>(() => Math.floor(Math.random() * 10) + 1)
     const [canClaim, setCanClaim] = React.useState(false)
     const [openCongrats, setOpenCongrats] = React.useState(false)
+
+     const { address ,isConnected } = useAppKitAccount() // AppKit hook to get the address and check if the user is connected
+        const { chainId } = useAppKitNetwork() // to get chainid
+        const { writeContract, isSuccess } = useWriteContract() // to in
+    
+        // const contract_address = "0xdCe18eF3f99F35F6cb93d1C408367f6B5C4790A7" 
+        const contract_address = "0x90453852bF223B265f3F7cf649924c6A8AAC26AD" 
 
   // 1:1 mirror amounts
   function handleFromAmount(v: string) {
@@ -48,6 +58,13 @@ function handleClaim() {
 
   async function onBridge() {
     
+     writeContract({
+      abi: propabi,
+      functionName: "transfer",
+      address: contract_address,
+      args: [address, "10"], // minting 10 tokens to the connected address
+    })
+
     if (busy) return
     setBusy(true)
     await new Promise((res) => setTimeout(res, 10_000)) // 10s timeout

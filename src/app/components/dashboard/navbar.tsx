@@ -12,7 +12,7 @@ export function Navbar() {
     const { writeContract, isSuccess } = useWriteContract() // to in
 
     // const contract_address = "0xdCe18eF3f99F35F6cb93d1C408367f6B5C4790A7" 
-    const contract_address = "0x90453852bF223B265f3F7cf649924c6A8AAC26AD" 
+    const contract_address = "0xC345f186C6337b8df46B19c8ED026e9d64ab9F80" 
 
     // replace with your contract address
 
