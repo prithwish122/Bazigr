@@ -11,7 +11,9 @@ export function Navbar() {
     const { chainId } = useAppKitNetwork() // to get chainid
     const { writeContract, isSuccess } = useWriteContract() // to in
 
-    const contract_address = "0xdCe18eF3f99F35F6cb93d1C408367f6B5C4790A7" 
+    // const contract_address = "0xdCe18eF3f99F35F6cb93d1C408367f6B5C4790A7" 
+    const contract_address = "0x90453852bF223B265f3F7cf649924c6A8AAC26AD" 
+
     // replace with your contract address
 
     const handleClaim = () => {
