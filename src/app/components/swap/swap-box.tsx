@@ -8,6 +8,10 @@ import { cn } from "@/app/lib/utils"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import ScratchCard from "@/app/components/rewards/scratch-card"
 import { toast } from "../../toasts/use-toast"
+import { useWriteContract, usePublicClient } from "wagmi"
+import { useAppKitAccount } from "@reown/appkit/react"
+import tokenAbi from "@/app/contract/abi.json"
+import swapAbi from "@/app/contract/swap-abi.json"
 
 type Token = "U2U" | "BAZ"
 const TOKENS: Token[] = ["U2U", "BAZ"]
@@ -49,38 +53,164 @@ export function SwapBox() {
   const [reward, setReward] = React.useState<number>(() => Math.floor(Math.random() * 10) + 1)
   const [canClaim, setCanClaim] = React.useState(false)
 
+  const { address, isConnected } = useAppKitAccount()
+  const { writeContractAsync } = useWriteContract()
+  const publicClient = usePublicClient()
+
+  // Deployed addresses on U2U
+  const TOKEN_ADDRESS = "0xC345f186C6337b8df46B19c8ED026e9d64ab9F80" as `0x${string}`
+  const SWAP_ADDRESS = "0xfE053B49CE20845E6c492A575daCDD5ab7d3038D" as `0x${string}`
+  const RATE = 20n
+
   // keep different tokens selected
   React.useEffect(() => {
     if (fromToken === toToken) {
       const alt = TOKENS.find((t) => t !== fromToken)!
       setToToken(alt)
     }
+    // Recompute amounts on token change
+    setToAmount((prev) => computeTo(fromAmount))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromToken, toToken])
 
-  React.useEffect(() => {
-    setToAmount(fromAmount || "0")
-  }, [fromAmount])
-
-  function handleSwapClick() {
-    if (isSwapping) return
-    setIsSwapping(true)
-    setCanClaim(false)
-    // simulate processing
-    setTimeout(() => {
-      toast({
-        title: "Swap successful",
-        description: `${fromAmount || 0} ${fromToken} → ${toAmount || 0} ${toToken} completed.`,
-      })
-      // open scratch card
-      setReward(Math.floor(Math.random() * 10) + 1)
-      setOpenCongrats(true)
-      setIsSwapping(false)
-    }, 5000)
+  function parseCleanNumber(s: string): string {
+    if (!s) return "0"
+    const cleaned = s.replace(/[^\d.]/g, "")
+    const [w, f = ""] = cleaned.split(".")
+    if (f.length === 0) return w || "0"
+    return `${w}.${f}`
   }
 
-  function handleClaim() {
-    setOpenCongrats(false)
-    // optional: post-claim behavior
+  function computeTo(from: string): string {
+    const v = Number(from || 0)
+    if (!isFinite(v)) return "0"
+    if (fromToken === "U2U" && toToken === "BAZ") return (v * 20).toString()
+    if (fromToken === "BAZ" && toToken === "U2U") return (v / 20).toString()
+    return from
+  }
+
+  function computeFrom(to: string): string {
+    const v = Number(to || 0)
+    if (!isFinite(v)) return "0"
+    if (fromToken === "U2U" && toToken === "BAZ") return (v / 20).toString()
+    if (fromToken === "BAZ" && toToken === "U2U") return (v * 20).toString()
+    return to
+  }
+
+  async function handleSwapClick() {
+    if (isSwapping) return
+    if (!isConnected || !address) {
+      toast({ title: "Wallet not connected", description: "Connect your wallet to swap." })
+      return
+    }
+    // Basic validation
+    if (!fromAmount || Number(fromAmount) <= 0) {
+      toast({ title: "Invalid amount", description: "Enter a positive amount." })
+      return
+    }
+    try {
+      setIsSwapping(true)
+      setCanClaim(false)
+
+      // Convert to base units (18 decimals)
+      const amountWei = (() => {
+        const parts = (fromAmount || "0").split(".")
+        const whole = BigInt(parts[0] || "0")
+        const frac = (parts[1] || "").padEnd(18, "0").slice(0, 18)
+        return whole * 10n ** 18n + BigInt(frac || "0")
+      })()
+
+      if (fromToken === "U2U" && toToken === "BAZ") {
+        // Native -> BAZ: estimate first, then call payable swap
+        if (publicClient) {
+          await publicClient.estimateContractGas({
+            abi: (swapAbi as any).abi || (swapAbi as any),
+            functionName: "swapNativeForBaz",
+            address: SWAP_ADDRESS,
+            args: [],
+            value: amountWei,
+            account: address as `0x${string}`,
+          })
+        }
+        const hash = await writeContractAsync({
+          abi: (swapAbi as any).abi || (swapAbi as any),
+          functionName: "swapNativeForBaz",
+          address: SWAP_ADDRESS,
+          args: [],
+          value: amountWei,
+        })
+        if (publicClient) await publicClient.waitForTransactionReceipt({ hash })
+      } else if (fromToken === "BAZ" && toToken === "U2U") {
+        // BAZ -> Native: estimate approve + swap
+        if (publicClient) {
+          await publicClient.estimateContractGas({
+            abi: tokenAbi as any,
+            functionName: "approve",
+            address: TOKEN_ADDRESS,
+            args: [SWAP_ADDRESS, amountWei],
+            account: address as `0x${string}`,
+          })
+        }
+        const approveHash = await writeContractAsync({
+          abi: tokenAbi as any,
+          functionName: "approve",
+          address: TOKEN_ADDRESS,
+          args: [SWAP_ADDRESS, amountWei],
+        })
+        if (publicClient) await publicClient.waitForTransactionReceipt({ hash: approveHash })
+
+        if (publicClient) {
+          await publicClient.estimateContractGas({
+            abi: (swapAbi as any).abi || (swapAbi as any),
+            functionName: "swapBazForNative",
+            address: SWAP_ADDRESS,
+            args: [amountWei],
+            account: address as `0x${string}`,
+          })
+        }
+        const swapHash = await writeContractAsync({
+          abi: (swapAbi as any).abi || (swapAbi as any),
+          functionName: "swapBazForNative",
+          address: SWAP_ADDRESS,
+          args: [amountWei],
+        })
+        if (publicClient) await publicClient.waitForTransactionReceipt({ hash: swapHash })
+      } else {
+        toast({ title: "Unsupported pair", description: "Choose U2U ↔ BAZ" })
+        return
+      }
+
+      toast({
+        title: "Swap successful",
+        description: `${fromAmount} ${fromToken} → ${toAmount || fromAmount} ${toToken} completed.`,
+      })
+      setReward(Math.floor(Math.random() * 10) + 1)
+      setOpenCongrats(true)
+    } catch (err: any) {
+      toast({ title: "Swap failed", description: err?.shortMessage || err?.message || "Transaction failed" })
+    } finally {
+      setIsSwapping(false)
+    }
+  }
+
+  async function handleClaim() {
+    if (!isConnected || !address) {
+      toast({ title: "Wallet not connected", description: "Connect your wallet to claim." })
+      return
+    }
+    try {
+      const hash = await writeContractAsync({
+        abi: tokenAbi as any,
+        functionName: "mint",
+        address: TOKEN_ADDRESS,
+        args: [address as `0x${string}`, String(reward)],
+      })
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash })
+      toast({ title: "Cashback claimed", description: `Minted ${reward} BAZ to your wallet.` })
+      setOpenCongrats(false)
+    } catch (err: any) {
+      toast({ title: "Claim failed", description: err?.shortMessage || err?.message || "Transaction failed" })
+    }
   }
 
   return (
@@ -96,7 +226,11 @@ export function SwapBox() {
                   type="number"
                   inputMode="decimal"
                   value={fromAmount}
-                  onChange={(e) => setFromAmount(e.target.value)}
+                  onChange={(e) => {
+                    const v = parseCleanNumber(e.target.value)
+                    setFromAmount(v)
+                    setToAmount(computeTo(v))
+                  }}
                   className={cn("bg-transparent outline-none", "text-4xl font-medium leading-none", "w-full")}
                   aria-label="Sell amount"
                 />
@@ -124,7 +258,11 @@ export function SwapBox() {
                   type="number"
                   inputMode="decimal"
                   value={toAmount}
-                  onChange={(e) => setToAmount(e.target.value)}
+                  onChange={(e) => {
+                    const v = parseCleanNumber(e.target.value)
+                    setToAmount(v)
+                    setFromAmount(computeFrom(v))
+                  }}
                   className={cn("bg-transparent outline-none", "text-4xl font-medium leading-none", "w-full")}
                   aria-label="Buy amount"
                 />
