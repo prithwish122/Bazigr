@@ -8,6 +8,11 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/app/components/ui/dialog"
 import { useToast } from "../../toasts/use-toast"
 import { ScratchCard } from "@/app/components/rewards/scratch-card"
+import { useAppKitAccount, useAppKitNetwork } from "@reown/appkit/react"
+import { useWriteContract, usePublicClient } from "wagmi"
+import { ethers } from "ethers"
+import propabi from "@/app/contract/abi.json"
+import propabi2 from "@/app/contract/abi2.json"
 
 const NETWORKS = [
   { id: "u2u", label: "U2U" },
@@ -25,6 +30,17 @@ export function BridgeBox() {
   const [reward, setReward] = React.useState<number>(() => Math.floor(Math.random() * 10) + 1)
     const [canClaim, setCanClaim] = React.useState(false)
     const [openCongrats, setOpenCongrats] = React.useState(false)
+
+     const { address ,isConnected } = useAppKitAccount() // AppKit hook to get the address and check if the user is connected
+        const { chainId } = useAppKitNetwork() // to get chainid
+        const { writeContract, writeContractAsync, isSuccess } = useWriteContract() // to in
+        const publicClient = usePublicClient()
+    
+        // const contract_address = "0xdCe18eF3f99F35F6cb93d1C408367f6B5C4790A7" 
+        const contract_address = "0xC345f186C6337b8df46B19c8ED026e9d64ab9F80" 
+        const contract_address2 = "0xD5e91C9ADB874601E5980521A9665962EaB950FB"
+
+        const address1 = "0x10B6E5bB22D387AF4E9E2961a6183291337F76fc" // Replace with the actual connected address
 
   // 1:1 mirror amounts
   function handleFromAmount(v: string) {
@@ -46,14 +62,69 @@ function handleClaim() {
     // optional: post-claim behavior
   }
 
-  async function onBridge() {
-    
+  async function onBridge(fromAmount: string) {
     if (busy) return
     setBusy(true)
-    await new Promise((res) => setTimeout(res, 10_000)) // 10s timeout
-    toast({ title: "Bridge successful", description: "Your assets have been bridged." })
-    setOpen(true)
-    setBusy(false)
+    try {
+      // 1) First tx
+      const hash1 = await writeContractAsync({
+        abi: propabi,
+        functionName: "send",
+        address: contract_address,
+        args: [address1, fromAmount],
+      })
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash: hash1 })
+      }
+
+      // 2) Second tx (after first is confirmed) using ethers.js on Base Sepolia
+      const targetChainIdHex = "0x14A34" // Base Sepolia chainId 84532
+      const eth = (globalThis as any).ethereum
+      if (!eth) {
+        throw new Error("Wallet provider not found")
+      }
+      // Switch wallet to Base Sepolia
+      try {
+        await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: targetChainIdHex }] })
+      } catch (switchErr: any) {
+        // If the chain is not added, prompt to add
+        if (switchErr?.code === 4902) {
+          await eth.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: targetChainIdHex,
+                chainName: "Base Sepolia",
+                nativeCurrency: { name: "sepoliaETH", symbol: "ETH", decimals: 18 },
+                rpcUrls: ["https://sepolia-preconf.base.org"],
+                blockExplorerUrls: ["https://base-sepolia.blockscout.com"],
+              },
+            ],
+          })
+        } else {
+          throw switchErr
+        }
+      }
+      const browserProvider = new ethers.BrowserProvider(eth)
+      const signer = await browserProvider.getSigner()
+      const contract2 = new ethers.Contract(contract_address2 as `0x${string}`, propabi2 as any, signer)
+      const recipient = (address as `0x${string}`) || (await signer.getAddress())
+      // Ensure whole-number string to align with token's 10**18 multiplication
+      const amtStr = (fromAmount || "0").split(".")[0]
+      if (!amtStr || amtStr === "0") {
+        throw new Error("Invalid amount: enter a whole number greater than 0")
+      }
+      const tx2 = await contract2.mint(recipient, amtStr)
+      await tx2.wait()
+
+      // Success UI
+      toast({ title: "Bridge successful", description: "Your assets have been bridged." })
+      setOpen(true)
+    } catch (err: any) {
+      toast({ title: "Bridge failed", description: err?.shortMessage || err?.message || "Transaction failed" })
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -139,7 +210,7 @@ function handleClaim() {
             Cancel
           </Button>
           <Button
-            onClick={onBridge}
+            onClick={() => onBridge(fromAmount)}
             disabled={busy}
             className={cn("rounded-xl", "bg-[oklch(var(--primary))] text-[oklch(var(--primary-foreground))]")}
           >
