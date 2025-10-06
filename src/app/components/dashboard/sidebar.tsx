@@ -41,7 +41,7 @@ export function Sidebar() {
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1">
             <span className="font-bold text-base tracking-tight">BAZIGR</span>
-            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-[#C71585] text-white">01</span>
+            {/* <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-[#C71585] text-white">01</span> */}
           </div>
           {!collapsed && (
             <span className="px-2 py-0.5 text-[10px] rounded-full border border-white/20 text-white/70">Personal</span>
@@ -72,8 +72,8 @@ export function Sidebar() {
       </nav>
 
       {/* Bottom Section */}
-      <div className="border-t border-white/10 p-3 space-y-2">
-        <div className="flex items-center gap-3 px-3 py-2">
+      <div className="border-t border-white/10 p-3 space-y-8">
+        {/* <div className="flex items-center gap-3 px-3 py-2">
           <div className="w-8 h-8 rounded-full bg-[#C71585] flex items-center justify-center text-sm font-semibold">
             U
           </div>
@@ -83,13 +83,10 @@ export function Sidebar() {
               <p className="text-xs text-white/50">Profile</p>
             </div>
           )}
-        </div>
+        </div> */}
 
         {!collapsed && (
-          <button className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-all text-sm">
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </button>
+          <appkit-account-button />
         )}
 
         {/* Collapse Button */}

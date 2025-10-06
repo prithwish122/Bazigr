@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { LaunchAppButton } from "./Launch"
 import { cn } from "../lib/utils"
+import Link from "next/link"
 
 export function Navbar() {
   const [open, setOpen] = useState(false)
@@ -35,7 +36,9 @@ export function Navbar() {
 
           {/* right side - Launch App button and menu */}
           <div className="flex items-center gap-2">
+            <Link href="/dashboard/transfer" >
             <LaunchAppButton />
+            </Link>
 
             {/* menu button */}
             {/* <button
