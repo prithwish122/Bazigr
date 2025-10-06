@@ -62,8 +62,36 @@ const customNetwork = defineChain({
   },
 })
 
+const customNetwork2 = defineChain({
+  id: 84532,
+  caipNetworkId: 'eip155:123456789',
+  chainNamespace: 'eip155',
+  name: 'Sepolia ETH',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Sepolia',
+    symbol: 'ETH',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://sepolia-preconf.base.org'],
+      webSocket: [''],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Sepolia ETH Explorer',
+      url: 'https://base-sepolia.blockscout.com',
+    },
+  },
+  contracts: {
+    // Add your contracts here if any
+  },
+})
+
+
 // Define networks before using them
-export const networks = [mainnet, arbitrum, customNetwork]
+export const networks = [mainnet, arbitrum, customNetwork,customNetwork2]
 
 // Set up the Wagmi Adapter (Config)
 export const wagmiAdapter = new WagmiAdapter({
@@ -78,7 +106,7 @@ export const wagmiAdapter = new WagmiAdapter({
 // Now use wagmiAdapter in createAppKit
 const modal = createAppKit({
   adapters: [wagmiAdapter], // Add valid adapter objects here if needed
-  networks: [customNetwork],
+  networks: [customNetwork,customNetwork2],
   chainImages: {
     123456789: 'https://s2.coinmarketcap.com/static/img/coins/200x200/23254.png',
   },
