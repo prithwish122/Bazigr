@@ -1,7 +1,7 @@
 # Bazigr
 
 **Live Demo:** [https://bazigr.vercel.app](https://bazigr.vercel.app)  
-**Bazigar Token/Bridge Address:** `0xC345f186C6337b8df46B19c8ED026e9d64ab9F80`  
+**Bazigar Token Address:** `0xC345f186C6337b8df46B19c8ED026e9d64ab9F80`  
 **Bazigar Swap Address:** `0xfE053B49CE20845E6c492A575daCDD5ab7d3038D`  
 
 **Bazigar Token Address(in U2U):** `0xC345f186C6337b8df46B19c8ED026e9d64ab9F80`  
