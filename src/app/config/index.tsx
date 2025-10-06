@@ -36,10 +36,10 @@ if (!projectId) {
 // })
 
 const customNetwork = defineChain({
-  id: 2484,
+  id: 39,
   caipNetworkId: 'eip155:123456789',
   chainNamespace: 'eip155',
-  name: 'U2U Testnet',
+  name: 'U2U Solaris Mainnet',
   nativeCurrency: {
     decimals: 18,
     name: 'U2U',
@@ -47,14 +47,14 @@ const customNetwork = defineChain({
   },
   rpcUrls: {
     default: {
-      http: ['https://rpc-nebulas-testnet.uniultra.xyz'],
+      http: ['https://rpc-mainnet.u2u.xyz'],
       webSocket: [''],
     },
   },
   blockExplorers: {
     default: {
       name: 'U2U Testnet Explorer',
-      url: 'https://testnet.u2uscan.xyz/',
+      url: 'https://u2uscan.xyz/',
     },
   },
   contracts: {
