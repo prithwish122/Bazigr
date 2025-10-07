@@ -23,6 +23,7 @@ const navItems = [
   { name: "Bridge", href: "/dashboard/bridge", icon: Bridge },
   { name: "Pools", href: "/dashboard/pools", icon: Droplets },
    { name: "Agent", href: "/dashboard/agent", icon: Bot },
+   { name: "Mini Games", href: "/dashboard/mini-games", icon: Trophy },
   { name: "Leaderboard", href: "/dashboard/leaderboard", icon: Trophy },
   { name: "Rewards", href: "/dashboard/rewards", icon: Gift },
 ]
