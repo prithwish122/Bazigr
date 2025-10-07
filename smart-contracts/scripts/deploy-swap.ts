@@ -4,6 +4,7 @@ import "dotenv/config";
 
 async function main() {
   const rpcUrl = process.env.U2U_RPC_URL || "https://rpc-mainnet.u2u.xyz";
+  console.log(process.env.U2U_RPC_URL,"====================================");
   const privateKey = (process.env.U2U_PRIVATE_KEY || "").startsWith("0x")
     ? (process.env.U2U_PRIVATE_KEY as string)
     : `0x${process.env.U2U_PRIVATE_KEY || ""}`;
