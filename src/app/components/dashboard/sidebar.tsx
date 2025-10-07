@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  Bot,
 } from "lucide-react"
 import { cn } from "@/app/lib/utils"
 
@@ -21,6 +22,7 @@ const navItems = [
   { name: "Swap", href: "/dashboard/swap", icon: Repeat },
   { name: "Bridge", href: "/dashboard/bridge", icon: Bridge },
   { name: "Pools", href: "/dashboard/pools", icon: Droplets },
+   { name: "Agent", href: "/dashboard/agent", icon: Bot },
   { name: "Leaderboard", href: "/dashboard/leaderboard", icon: Trophy },
   { name: "Rewards", href: "/dashboard/rewards", icon: Gift },
 ]
