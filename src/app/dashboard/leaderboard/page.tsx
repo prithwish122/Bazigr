@@ -1,88 +1,62 @@
-"use client"
+type LeaderEntry = {
+  address: string
+  baz: number
+}
 
-import { Trophy } from "lucide-react"
-
-// Mock leaderboard data - replace with real data from your backend
-const leaderboardData = [
-  { rank: 1, wallet: "0x742d...5980", amount: 500, color: "from-yellow-400 to-yellow-500" },
-  { rank: 2, wallet: "0x8a3f...1105", amount: 487, color: "from-cyan-400 to-cyan-500" },
-  { rank: 3, wallet: "0x5c2e...5800", amount: 456, color: "from-pink-400 to-pink-500" },
-  { rank: 4, wallet: "0x9d1b...4001", amount: 423, color: "from-orange-300 to-orange-400" },
-  { rank: 5, wallet: "0x3f7a...8246", amount: 389, color: "from-orange-300 to-orange-400" },
-  { rank: 6, wallet: "0x6e4c...5607", amount: 342, color: "from-orange-300 to-orange-400" },
-  { rank: 7, wallet: "0x2b8d...4649", amount: 298, color: "from-orange-300 to-orange-400" },
-  { rank: 8, wallet: "0x7f3e...3000", amount: 267, color: "from-orange-300 to-orange-400" },
+const entries: LeaderEntry[] = [
+  // ensure highest is 500
+  // { address: "0xhuWihhwiuhwhihmwefs", baz: 500 },
+  { address: "0x3F91a7bE2cC19d8f14E0", baz: 445 },
+  { address: "0xA1b2C3d4E5f6a7B8c9D0", baz: 430 },
+  { address: "0x77Ee99bb22AA1188cc33", baz: 410 },
+  { address: "0x1a2b3c4d5e6f7a8b9c0d", baz: 395 },
+  { address: "0x9f8e7d6c5b4a3f2e1d0c", baz: 372 },
+  { address: "0xABCDEF0123456789abcd", baz: 360 },
+  { address: "You", baz: 10 },
+  // { address: "0x0f1e2d3c4b5a69788776", baz: 330 },
+  // { address: "0xDEADbeef0000Cafe1234", baz: 318 },
+  // { address: "0x1234567890abcdef1234", baz: 305 },
+  // { address: "0x9876abcd5432ef109876", baz: 290 },
 ]
+
+// sort by tokens desc just in case
+const sorted = [...entries].sort((a, b) => b.baz - a.baz)
 
 export default function LeaderboardPage() {
   return (
-    <div className="w-full min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="relative mb-8">
-          <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-pink-500 to-red-500 blur-xl opacity-50" />
-          <div className="relative bg-gradient-to-r from-red-500 to-pink-500 rounded-t-3xl py-4 px-6 text-center shadow-2xl">
-            <h1 className="text-2xl font-bold text-white tracking-wide uppercase">Leaderboard</h1>
-          </div>
-        </div>
+    <div className="w-full">
+      <header className="w-full py-4">
+        <h1 className="text-center text-2xl md:text-3xl font-semibold tracking-tight">Leader Board</h1>
+      </header>
 
-        {/* Leaderboard Container */}
-        <div className="relative">
-          {/* Glass morphism background */}
-          <div className="absolute inset-0 backdrop-blur-xl bg-white/5 rounded-3xl border-4 border-yellow-500/50 shadow-2xl" />
-
-          {/* Content */}
-          <div className="relative p-6 space-y-3">
-            {leaderboardData.map((entry) => (
+      <div className="mt-4 flex flex-col gap-4">
+        {sorted.map((item, idx) => (
+          <div
+            key={item.address + idx}
+            className="w-full backdrop-blur-xl bg-white/5 hover:bg-white/10 transition-colors rounded-xl border border-white/10 p-4 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-4 min-w-0">
+              {/* sl. no. */}
               <div
-                key={entry.rank}
-                className={`relative group overflow-hidden rounded-full transition-all duration-300 hover:scale-105 hover:shadow-xl`}
+                className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/10 border border-white/10 text-sm font-semibold"
+                aria-label={`Rank ${idx + 1}`}
+                title={`Rank ${idx + 1}`}
               >
-                {/* Gradient background */}
-                <div className={`absolute inset-0 bg-gradient-to-r ${entry.color} opacity-90`} />
-
-                {/* Glass overlay */}
-                <div className="absolute inset-0 backdrop-blur-sm bg-white/10" />
-
-                {/* Content */}
-                <div className="relative flex items-center gap-4 px-5 py-4">
-                  {/* Rank */}
-                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
-                    <span className="text-xl font-bold text-white drop-shadow-lg">{entry.rank}</span>
-                  </div>
-
-                  {/* Avatar */}
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/30 flex items-center justify-center overflow-hidden">
-                    <div className="w-full h-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
-                      <Trophy className="w-5 h-5 text-white" />
-                    </div>
-                  </div>
-
-                  {/* Wallet Address */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-white drop-shadow-md truncate uppercase tracking-wide">
-                      {entry.wallet}
-                    </p>
-                  </div>
-
-                  {/* Token Amount */}
-                  <div className="flex-shrink-0 flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/30">
-                    <div className="w-6 h-6 rounded-full bg-yellow-400 flex items-center justify-center shadow-lg">
-                      <span className="text-[10px] font-bold text-yellow-900">BAZ</span>
-                    </div>
-                    <span className="text-sm font-bold text-white drop-shadow-md">{entry.amount.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                {/* Shine effect on hover */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
+                {idx + 1}
               </div>
-            ))}
+              {/* address */}
+              <div className="min-w-0">
+                <p className="text-sm md:text-base font-medium truncate">{item.address}</p>
+                <p className="text-xs text-white/60">Address</p>
+              </div>
+            </div>
+            {/* tokens */}
+            <div className="text-right">
+              <p className="text-sm md:text-base font-semibold">{item.baz} Baz</p>
+              <p className="text-xs text-white/60">Tokens</p>
+            </div>
           </div>
-
-          {/* Bottom decoration */}
-          <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-12 bg-gradient-to-b from-yellow-500/30 to-transparent rounded-b-full blur-xl" />
-        </div>
+        ))}
       </div>
     </div>
   )
