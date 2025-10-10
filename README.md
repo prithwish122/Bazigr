@@ -1,10 +1,17 @@
 # Bazigr
 
 **Live Demo:** [https://bazigr.vercel.app](https://bazigr.vercel.app)  
-**Bazigar Token Address(U2U Mainnet):** `0xC345f186C6337b8df46B19c8ED026e9d64ab9F80`  
-**Bazigar Swap Address(U2U Mainnet):** `0xE396AeD3086E2Fd5B8Bc1f1622AD298A396A4470`  
+**Bazigr Token Address(U2U Mainnet):** `0xC345f186C6337b8df46B19c8ED026e9d64ab9F80`  
 
-**Bazigar Token Address(in Sepolia Eth for bridge):** `0xD5e91C9ADB874601E5980521A9665962EaB950FB`  
+**Bazigr Swap Address(U2U Mainnet):** `0xE396AeD3086E2Fd5B8Bc1f1622AD298A396A4470`  
+
+**Bazigr Bridge Address(U2U Mainnet):** `0xEA41526ac190C2521e046D98159eCCcC7a05F218`  
+
+-----------------------------------------------------------------
+
+**Bridge(Sepolia Eth testnest):** `0xE8aDCF38C12cB70CcEAcE6cb7fbB1e6e5305550B`  
+
+**Bazigar Token Address(Sepolia Eth testnet):** `0xDf2eEe4b129EA759500c7aDbc748b09cE8487e9c`  
 
 
 
