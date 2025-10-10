@@ -44,8 +44,8 @@ const config: HardhatUserConfig = {
     u2uMainnet: {
       type: "http",
       chainType: "l1",
-      url: process.env.U2U_RPC_URL || "https://rpc-mainnet.u2u.xyz",
-      accounts: process.env.U2U_PRIVATE_KEY ? [process.env.U2U_PRIVATE_KEY] : [],
+      url: configVariable("U2U_RPC_URL"),
+      accounts: [configVariable("U2U_PRIVATE_KEY")],
     },
   },
 };
