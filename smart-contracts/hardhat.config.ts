@@ -38,7 +38,7 @@ const config: HardhatUserConfig = {
     sepolia: {
       type: "http",
       chainType: "l1",
-      url: configVariable("SEPOLIA_RPC_URL"),
+      url: "https://sepolia.infura.io/v3/" + configVariable("INFURA_API_KEY"),
       accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
     },
     u2uMainnet: {
