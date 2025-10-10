@@ -59,7 +59,7 @@ export function SwapBox() {
 
   // Deployed addresses on U2U
   const TOKEN_ADDRESS = "0xC345f186C6337b8df46B19c8ED026e9d64ab9F80" as `0x${string}`
-  const SWAP_ADDRESS = "0xfE053B49CE20845E6c492A575daCDD5ab7d3038D" as `0x${string}`
+  const SWAP_ADDRESS = "0xE396AeD3086E2Fd5B8Bc1f1622AD298A396A4470" as `0x${string}`
   const RATE = 20n
 
   // keep different tokens selected
@@ -121,16 +121,20 @@ export function SwapBox() {
       })()
 
       if (fromToken === "U2U" && toToken === "BAZ") {
-        // Native -> BAZ: estimate first, then call payable swap
+        // Native -> BAZ: try estimating, but don't block on failures
         if (publicClient) {
-          await publicClient.estimateContractGas({
-            abi: (swapAbi as any).abi || (swapAbi as any),
-            functionName: "swapNativeForBaz",
-            address: SWAP_ADDRESS,
-            args: [],
-            value: amountWei,
-            account: address as `0x${string}`,
-          })
+          try {
+            await publicClient.estimateContractGas({
+              abi: (swapAbi as any).abi || (swapAbi as any),
+              functionName: "swapNativeForBaz",
+              address: SWAP_ADDRESS,
+              args: [],
+              value: amountWei,
+              account: address as `0x${string}`,
+            })
+          } catch (_) {
+            // ignore estimation errors and proceed to submit tx
+          }
         }
         const hash = await writeContractAsync({
           abi: (swapAbi as any).abi || (swapAbi as any),
@@ -141,15 +145,19 @@ export function SwapBox() {
         })
         if (publicClient) await publicClient.waitForTransactionReceipt({ hash })
       } else if (fromToken === "BAZ" && toToken === "U2U") {
-        // BAZ -> Native: estimate approve + swap
+        // BAZ -> Native: estimate approve + swap (non-blocking)
         if (publicClient) {
-          await publicClient.estimateContractGas({
-            abi: tokenAbi as any,
-            functionName: "approve",
-            address: TOKEN_ADDRESS,
-            args: [SWAP_ADDRESS, amountWei],
-            account: address as `0x${string}`,
-          })
+          try {
+            await publicClient.estimateContractGas({
+              abi: tokenAbi as any,
+              functionName: "approve",
+              address: TOKEN_ADDRESS,
+              args: [SWAP_ADDRESS, amountWei],
+              account: address as `0x${string}`,
+            })
+          } catch (_) {
+            // ignore
+          }
         }
         const approveHash = await writeContractAsync({
           abi: tokenAbi as any,
@@ -160,13 +168,17 @@ export function SwapBox() {
         if (publicClient) await publicClient.waitForTransactionReceipt({ hash: approveHash })
 
         if (publicClient) {
-          await publicClient.estimateContractGas({
-            abi: (swapAbi as any).abi || (swapAbi as any),
-            functionName: "swapBazForNative",
-            address: SWAP_ADDRESS,
-            args: [amountWei],
-            account: address as `0x${string}`,
-          })
+          try {
+            await publicClient.estimateContractGas({
+              abi: (swapAbi as any).abi || (swapAbi as any),
+              functionName: "swapBazForNative",
+              address: SWAP_ADDRESS,
+              args: [amountWei],
+              account: address as `0x${string}`,
+            })
+          } catch (_) {
+            // ignore
+          }
         }
         const swapHash = await writeContractAsync({
           abi: (swapAbi as any).abi || (swapAbi as any),
