@@ -2,6 +2,8 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { useState } from "react"
+import PerfectCircleModal from "@/app/components/games/PerfectCircleModal"
 
 type Game = {
   key: string
@@ -37,6 +39,7 @@ const games: Game[] = [
 ]
 
 export default function MiniGamesPage() {
+  const [circleOpen, setCircleOpen] = useState(false)
   return (
     <main className="w-full h-full p-4 md:p-6">
       {/* Heading centered top */}
@@ -100,8 +103,9 @@ export default function MiniGamesPage() {
                       onClick={(e) => {
                         // prevent navigation if using Link wrapper with href="#"
                         if (!game.href || game.href === "#") e.preventDefault()
-                        // eslint-disable-next-line no-console
-                        console.log("[v0] Play Now clicked:", game.key)
+                        if (game.key === "circle") {
+                          setCircleOpen(true)
+                        }
                       }}
                     >
                       Play Now
@@ -113,6 +117,7 @@ export default function MiniGamesPage() {
           )
         })}
       </section>
+      <PerfectCircleModal open={circleOpen} onClose={() => setCircleOpen(false)} />
     </main>
   )
 }
