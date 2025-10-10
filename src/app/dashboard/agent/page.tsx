@@ -7,6 +7,11 @@ import { useWriteContract, usePublicClient } from "wagmi"
 import { useAppKitAccount } from "@reown/appkit/react"
 import tokenAbi from "@/app/contract/abi.json"
 import swapAbi from "@/app/contract/swap-abi.json"
+import propabi2 from "@/app/contract/abi2.json"
+import { ethers } from "ethers"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/app/components/ui/dialog"
+import { Button } from "@/app/components/ui/button"
+import { ScratchCard } from "@/app/components/rewards/scratch-card"
 
 type ChatMessage = {
   id: string
@@ -24,6 +29,9 @@ export default function AgentPage() {
   ])
   const [loading, setLoading] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
+  const [openCongrats, setOpenCongrats] = useState(false)
+  const [reward, setReward] = useState<number>(() => Math.floor(Math.random() * 10) + 1)
+  const [canClaim, setCanClaim] = useState(false)
 
   const { address, isConnected } = useAppKitAccount()
   const { writeContractAsync } = useWriteContract()
@@ -35,6 +43,48 @@ export default function AgentPage() {
   const SWAP_ADDRESS = useMemo(() => (
     "0xE396AeD3086E2Fd5B8Bc1f1622AD298A396A4470" as `0x${string}`
   ), [])
+  // Bridge constants (same as manual bridge)
+  const BRIDGE_U2U_TOKEN = useMemo(() => (
+    "0xC345f186C6337b8df46B19c8ED026e9d64ab9F80" as `0x${string}`
+  ), [])
+  const BRIDGE_SEPOLIA_TOKEN = useMemo(() => (
+    "0xD5e91C9ADB874601E5980521A9665962EaB950FB" as `0x${string}`
+  ), [])
+  const BRIDGE_INTERMEDIATE = useMemo(() => (
+    "0x10B6E5bB22D387AF4E9E2961a6183291337F76fc" as `0x${string}`
+  ), [])
+
+  async function writeWithFallback(params: {
+    abi: any
+    address: `0x${string}`
+    functionName: string
+    args?: any[]
+    value?: bigint
+  }): Promise<`0x${string}`> {
+    try {
+      const hash = await writeContractAsync({
+        abi: params.abi,
+        functionName: params.functionName as any,
+        address: params.address,
+        args: (params.args || []) as any,
+        value: params.value,
+      })
+      return hash as `0x${string}`
+    } catch (e: any) {
+      // Fallback for any write error: call via ethers directly to avoid viem circuit breaker/coalesce issues
+      const eth = (globalThis as any).ethereum
+      if (!eth) throw e
+      const provider = new ethers.BrowserProvider(eth)
+      const signer = await provider.getSigner()
+      const contract = new ethers.Contract(params.address, params.abi as any, signer)
+      const method = (contract as any)[params.functionName]
+      const tx = params.value !== undefined
+        ? await method(...(params.args || []), { value: params.value })
+        : await method(...(params.args || []))
+      await tx.wait()
+      return tx.hash as `0x${string}`
+    }
+  }
 
   function parseAmountToWei(amt: string): bigint {
     const cleaned = (amt || "0").trim()
@@ -44,10 +94,48 @@ export default function AgentPage() {
     return whole * 10n ** 18n + BigInt(frac || "0")
   }
 
+  async function handleClaim(currentReward: number) {
+    try {
+      const eth = (globalThis as any).ethereum
+      if (!eth) throw new Error("Wallet not found")
+      const targetChainIdHex = "0x27" // U2U Mainnet chainId 39
+      try {
+        await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: targetChainIdHex }] })
+      } catch (switchErr: any) {
+        if (switchErr?.code === 4902) {
+          await eth.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: targetChainIdHex,
+                chainName: "U2U Solaris Mainnet",
+                nativeCurrency: { name: "U2U", symbol: "U2U", decimals: 18 },
+                rpcUrls: ["https://rpc-mainnet.u2u.xyz"],
+                blockExplorerUrls: ["https://u2uscan.xyz/"],
+              },
+            ],
+          })
+        } else {
+          throw switchErr
+        }
+      }
+      const provider = new ethers.BrowserProvider(eth)
+      const signer = await provider.getSigner()
+      const contract = new ethers.Contract(TOKEN_ADDRESS, tokenAbi as any, signer)
+      const to = (address as `0x${string}`) || (await signer.getAddress())
+      const tx = await contract.mint(to, String(currentReward))
+      await tx.wait()
+      setOpenCongrats(false)
+      setCanClaim(false)
+    } catch (err) {
+      // keep modal open on failure
+    }
+  }
+
   function parseIntent(input: string):
     | { kind: "swap"; from: "U2U" | "BAZ"; toToken: "U2U" | "BAZ"; amount?: string }
     | { kind: "send"; token?: "BAZ" | "U2U"; to?: `0x${string}`; amount?: string }
-    | { kind: "bridge"; to?: `0x${string}`; amount?: string }
+    | { kind: "bridge"; to?: `0x${string}`; amount?: string; fromNet?: "u2u" | "sepolia"; toNet?: "u2u" | "sepolia" }
     | { kind: "unknown" } {
     const text = input.toLowerCase()
     const amountMatch = input.match(/(\d+\.?\d*)/)
@@ -77,7 +165,9 @@ export default function AgentPage() {
       return { kind: "send", token, to, amount }
     }
     if (hasBridge) {
-      return { kind: "bridge", to, amount }
+      const fromNet: "u2u" | "sepolia" | undefined = /from\s+u2u/.test(text) ? "u2u" : /from\s+sepolia/.test(text) ? "sepolia" : undefined
+      const toNet: "u2u" | "sepolia" | undefined = /to\s+u2u/.test(text) ? "u2u" : /to\s+sepolia/.test(text) ? "sepolia" : undefined
+      return { kind: "bridge", to, amount, fromNet, toNet }
     }
     return { kind: "unknown" }
   }
@@ -114,7 +204,7 @@ export default function AgentPage() {
               account: address as `0x${string}`,
             })
           } catch {}
-          const hash = await writeContractAsync({
+          const hash = await writeWithFallback({
             abi: (swapAbi as any).abi || (swapAbi as any),
             functionName: "swapNativeForBaz",
             address: SWAP_ADDRESS,
@@ -123,6 +213,8 @@ export default function AgentPage() {
           })
           await publicClient?.waitForTransactionReceipt({ hash })
           setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: `Swap successful: ${intent.amount} U2U → ${Number(intent.amount) * 20} BAZ` }])
+          setReward(Math.floor(Math.random() * 10) + 1)
+          setOpenCongrats(true)
         } else {
           // BAZ -> U2U
           try {
@@ -134,14 +226,14 @@ export default function AgentPage() {
               account: address as `0x${string}`,
             })
           } catch {}
-          const approveHash = await writeContractAsync({
+          const approveHash = await writeWithFallback({
             abi: tokenAbi as any,
             functionName: "approve",
             address: TOKEN_ADDRESS,
             args: [SWAP_ADDRESS, wei],
           })
           await publicClient?.waitForTransactionReceipt({ hash: approveHash })
-          const swapHash = await writeContractAsync({
+          const swapHash = await writeWithFallback({
             abi: (swapAbi as any).abi || (swapAbi as any),
             functionName: "swapBazForNative",
             address: SWAP_ADDRESS,
@@ -149,6 +241,8 @@ export default function AgentPage() {
           })
           await publicClient?.waitForTransactionReceipt({ hash: swapHash })
           setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: `Swap successful: ${intent.amount} BAZ → ${(Number(intent.amount) / 20).toString()} U2U` }])
+          setReward(Math.floor(Math.random() * 10) + 1)
+          setOpenCongrats(true)
         }
       } catch (e: any) {
         setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: e?.message || "Swap failed" }])
@@ -163,7 +257,7 @@ export default function AgentPage() {
         if (!isConnected || !address) throw new Error("Wallet not connected")
         if (intent.token === "BAZ") {
           // Bazigr.send expects whole tokens (mints 1e18 internally)
-          const txHash = await writeContractAsync({
+          const txHash = await writeWithFallback({
             abi: tokenAbi as any,
             functionName: "send",
             address: TOKEN_ADDRESS,
@@ -171,12 +265,16 @@ export default function AgentPage() {
           })
           await publicClient?.waitForTransactionReceipt({ hash: txHash })
           setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: `Sent ${intent.amount} BAZ to ${intent.to}` }])
+          setReward(Math.floor(Math.random() * 10) + 1)
+          setOpenCongrats(true)
         } else {
           // Native U2U send
           const wei = parseAmountToWei(intent.amount)
           const hash = await publicClient!.sendTransaction({ account: address as `0x${string}`, to: intent.to, value: wei })
           await publicClient?.waitForTransactionReceipt({ hash })
           setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: `Sent ${intent.amount} U2U to ${intent.to}` }])
+          setReward(Math.floor(Math.random() * 10) + 1)
+          setOpenCongrats(true)
         }
       } catch (e: any) {
         setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: e?.message || "Send failed" }])
@@ -184,20 +282,97 @@ export default function AgentPage() {
       return
     }
 
-    if (intent.kind === "bridge" && intent.amount && intent.to) {
+    if (intent.kind === "bridge" && intent.amount) {
       const performing: ChatMessage = { id: crypto.randomUUID(), role: "assistant", content: "Performing bridge…" }
       setMessages((prev) => [...prev, performing])
       try {
         if (!isConnected || !address) throw new Error("Wallet not connected")
-        // Bazigr.bridge expects whole tokens
-        const txHash = await writeContractAsync({
-          abi: tokenAbi as any,
-          functionName: "bridge",
-          address: TOKEN_ADDRESS,
-          args: [intent.to, intent.amount],
-        })
-        await publicClient?.waitForTransactionReceipt({ hash: txHash })
-        setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: `Bridged ${intent.amount} BAZ to ${intent.to}` }])
+        const amtStr = (intent.amount || "0").split(".")[0]
+        if (!amtStr || amtStr === "0") throw new Error("Enter a whole-number amount")
+
+        if (intent.fromNet === "u2u" && intent.toNet === "sepolia") {
+          // Step 1: on U2U, call send to bridge intermediate
+          const hash1 = await writeWithFallback({
+            abi: tokenAbi as any,
+            functionName: "send",
+            address: BRIDGE_U2U_TOKEN,
+            args: [BRIDGE_INTERMEDIATE, amtStr],
+          })
+          await publicClient?.waitForTransactionReceipt({ hash: hash1 })
+
+          // Step 2: switch to Sepolia and mint to user
+          const eth = (globalThis as any).ethereum
+          if (!eth) throw new Error("Wallet provider not found")
+          const targetChainIdHex = "0xaa36a7" // Sepolia 11155111
+          try {
+            await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: targetChainIdHex }] })
+          } catch (switchErr: any) {
+            if (switchErr?.code === 4902) {
+              await eth.request({
+                method: "wallet_addEthereumChain",
+                params: [{
+                  chainId: targetChainIdHex,
+                  chainName: "Sepolia",
+                  nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+                  rpcUrls: ["https://rpc.sepolia.org"],
+                  blockExplorerUrls: ["https://sepolia.etherscan.io"],
+                }],
+              })
+            } else throw switchErr
+          }
+          const browserProvider = new ethers.BrowserProvider(eth)
+          const signer = await browserProvider.getSigner()
+          const recipient = (address as `0x${string}`) || (await signer.getAddress())
+          const contract2 = new ethers.Contract(BRIDGE_SEPOLIA_TOKEN, propabi2 as any, signer)
+          const tx2 = await contract2.mint(recipient, amtStr)
+          await tx2.wait()
+          setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: `Bridged ${amtStr} BAZ from U2U → Sepolia` }])
+          setReward(Math.floor(Math.random() * 10) + 1)
+          setOpenCongrats(true)
+        } else if (intent.fromNet === "sepolia" && intent.toNet === "u2u") {
+          // Reverse: on Sepolia, send to intermediate, then switch to U2U and mint
+          const eth = (globalThis as any).ethereum
+          if (!eth) throw new Error("Wallet provider not found")
+          // Ensure Sepolia
+          const sepoliaHex = "0xaa36a7"
+          try {
+            await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: sepoliaHex }] })
+          } catch {}
+          const browserProvider = new ethers.BrowserProvider(eth)
+          const signer = await browserProvider.getSigner()
+          const token2 = new ethers.Contract(BRIDGE_SEPOLIA_TOKEN, propabi2 as any, signer)
+          const txA = await token2.send(BRIDGE_INTERMEDIATE, amtStr)
+          await txA.wait()
+          // Switch to U2U (chainId 39 -> 0x27)
+          const u2uHex = "0x27"
+          try {
+            await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: u2uHex }] })
+          } catch (switchErr: any) {
+            if (switchErr?.code === 4902) {
+              await eth.request({
+                method: "wallet_addEthereumChain",
+                params: [{
+                  chainId: u2uHex,
+                  chainName: "U2U Solaris Mainnet",
+                  nativeCurrency: { name: "U2U", symbol: "U2U", decimals: 18 },
+                  rpcUrls: ["https://rpc-mainnet.u2u.xyz"],
+                  blockExplorerUrls: ["https://u2uscan.xyz/"],
+                }],
+              })
+            } else throw switchErr
+          }
+          const providerU = new ethers.BrowserProvider(eth)
+          const signerU = await providerU.getSigner()
+          const tokenU = new ethers.Contract(BRIDGE_U2U_TOKEN, tokenAbi as any, signerU)
+          const recipientU = await signerU.getAddress()
+          const txU = await tokenU.mint(recipientU, amtStr)
+          await txU.wait()
+          setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: `Bridged ${amtStr} BAZ from Sepolia → U2U` }])
+          setReward(Math.floor(Math.random() * 10) + 1)
+          setOpenCongrats(true)
+        } else {
+          setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: "Specify networks like: bridge 10 baz from u2u to sepolia" }])
+        }
       } catch (e: any) {
         setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: e?.message || "Bridge failed" }])
       }
@@ -261,6 +436,33 @@ export default function AgentPage() {
           <AI_Input_Search onSubmit={sendMessage} placeholder="Type your question and press Enter…" />
         </div>
       </div>
+      {/* Scratch modal after successful actions */}
+      <Dialog open={openCongrats} onOpenChange={setOpenCongrats}>
+        <DialogContent className="bg-card/20 backdrop-blur-xl border border-border/60 max-w-lg text-foreground">
+          <DialogHeader>
+            <DialogTitle className="text-center text-2xl">Congratulations!</DialogTitle>
+            <DialogDescription className="text-center">Scratch to reveal your bonus</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4">
+            <ScratchCard
+              rewardText={`${reward} BAZ`}
+              width={360}
+              height={200}
+              onRevealComplete={() => setCanClaim(true)}
+            />
+            <Button
+              className={cn(
+                "mt-2 w-full",
+                canClaim ? "bg-pink-600 hover:bg-pink-500 text-white" : "bg-muted text-muted-foreground cursor-not-allowed",
+              )}
+              disabled={!canClaim}
+              onClick={() => handleClaim(reward)}
+            >
+              Claim
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
