@@ -18,7 +18,7 @@ const games: Game[] = [
   {
     key: "circle",
     name: "Draw Perfect Circle",
-    poster: "/draw-perfect-circle-poster.jpg",
+    poster: "/images/circle.png",
     tokens: 5,
     href: "#", // hook up later if needed
   },
@@ -65,8 +65,8 @@ export default function MiniGamesPage() {
                 "flex flex-col",
               ].join(" ")}
             >
-              {/* Poster */}
-              <div className="relative w-full aspect-[16/9]">
+              {/* Poster - edge-to-edge (bezel-less) at the top */}
+              <div className="relative w-full h-64 md:h-80 lg:h-96">
                 <Image
                   src={game.poster || "/placeholder.svg"}
                   alt={`${game.name} poster`}
