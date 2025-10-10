@@ -37,7 +37,7 @@ if (!projectId) {
 
 const customNetwork = defineChain({
   id: 39,
-  caipNetworkId: 'eip155:123456789',
+  caipNetworkId: 'eip155:39',
   chainNamespace: 'eip155',
   name: 'U2U Solaris Mainnet',
   nativeCurrency: {
@@ -48,12 +48,12 @@ const customNetwork = defineChain({
   rpcUrls: {
     default: {
       http: ['https://rpc-mainnet.u2u.xyz'],
-      webSocket: [''],
+      webSocket: ['wss://rpc-mainnet.u2u.xyz/ws'],
     },
   },
   blockExplorers: {
     default: {
-      name: 'U2U Testnet Explorer',
+      name: 'U2U Explorer',
       url: 'https://u2uscan.xyz/',
     },
   },
@@ -63,25 +63,25 @@ const customNetwork = defineChain({
 })
 
 const customNetwork2 = defineChain({
-  id: 84532,
-  caipNetworkId: 'eip155:123456789',
+  id: 11155111,
+  caipNetworkId: 'eip155:11155111',
   chainNamespace: 'eip155',
   name: 'Sepolia ETH',
   nativeCurrency: {
     decimals: 18,
-    name: 'Sepolia',
+    name: 'SepoliaETH',
     symbol: 'ETH',
   },
   rpcUrls: {
     default: {
-      http: ['https://sepolia-preconf.base.org'],
-      webSocket: [''],
+      http: ['https://sepolia.infura.io/v3/147ac26d4875d31fbecca54c782a112d'],
+      webSocket: ['wss://sepolia.infura.io/ws/v3/147ac26d4875d31fbecca54c782a112d'],
     },
   },
   blockExplorers: {
     default: {
-      name: 'Sepolia ETH Explorer',
-      url: 'https://base-sepolia.blockscout.com',
+      name: 'Sepolia Explorer',
+      url: 'https://sepolia.etherscan.io',
     },
   },
   contracts: {
@@ -106,10 +106,11 @@ export const wagmiAdapter = new WagmiAdapter({
 // Now use wagmiAdapter in createAppKit
 const modal = createAppKit({
   adapters: [wagmiAdapter], // Add valid adapter objects here if needed
-  networks: [customNetwork,customNetwork2],
-  chainImages: {
-    123456789: 'https://s2.coinmarketcap.com/static/img/coins/200x200/23254.png',
-  },
+  networks: [customNetwork, customNetwork2],
+  // chainImages: {
+  //   39: 'https://s2.coinmarketcap.com/static/img/coins/200x200/23254.png',
+  //   11155111: 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
+  // },
   projectId: '147ac26d4875d31fbecca54c782a112d',
 })
 
