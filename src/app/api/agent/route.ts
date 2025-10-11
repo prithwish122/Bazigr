@@ -9,7 +9,7 @@ function buildFallbackReply(input: string): string {
   if (/wallet|address/.test(text)) return "I can't read your wallet from the server. In the app header, connect your wallet; your address will show there.";
   if (/swap|exchange/.test(text)) return "To swap: 'swap 1 U2U to BAZ' or 'swap 100 BAZ to U2U'. The agent input will execute it.";
   if (/send|transfer/.test(text)) return "To send: 'send 5 BAZ to 0x...' or 'send 0.1 U2U to 0x...'.";
-  if (/bridge/.test(text)) return "To bridge: 'bridge 10 BAZ to 0x...'.";
+  if (/bridge/.test(text)) return "To bridge: 'bridge 10 BAZ from u2u to sepolia' or 'bridge 5 BAZ from sepolia to u2u'. Specify both source and destination networks.";
   return "Got it. You can ask me to swap, send, or bridge using natural language.";
 }
 

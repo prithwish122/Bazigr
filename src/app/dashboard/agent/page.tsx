@@ -8,6 +8,8 @@ import { useAppKitAccount } from "@reown/appkit/react"
 import tokenAbi from "@/app/contract/abi.json"
 import swapAbi from "@/app/contract/swap-abi.json"
 import propabi2 from "@/app/contract/abi2.json"
+import bridgeAbi from "@/app/contract/bridge-abi.json"
+import sepoliaBridgeAbi from "@/app/contract/sepolia-bridge-abi.json"
 import { ethers } from "ethers"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
@@ -44,14 +46,17 @@ export default function AgentPage() {
     "0xE396AeD3086E2Fd5B8Bc1f1622AD298A396A4470" as `0x${string}`
   ), [])
   // Bridge constants (same as manual bridge)
-  const BRIDGE_U2U_TOKEN = useMemo(() => (
+  const U2U_BRIDGE_ADDRESS = useMemo(() => (
+    "0xEA41526ac190C2521e046D98159eCCcC7a05F218" as `0x${string}`
+  ), [])
+  const SEPOLIA_BRIDGE_ADDRESS = useMemo(() => (
+    "0xE8aDCF38C12cB70CcEAcE6cb7fbB1e6e5305550B" as `0x${string}`
+  ), [])
+  const U2U_TOKEN_ADDRESS = useMemo(() => (
     "0xC345f186C6337b8df46B19c8ED026e9d64ab9F80" as `0x${string}`
   ), [])
-  const BRIDGE_SEPOLIA_TOKEN = useMemo(() => (
-    "0xD5e91C9ADB874601E5980521A9665962EaB950FB" as `0x${string}`
-  ), [])
-  const BRIDGE_INTERMEDIATE = useMemo(() => (
-    "0x10B6E5bB22D387AF4E9E2961a6183291337F76fc" as `0x${string}`
+  const SEPOLIA_TOKEN_ADDRESS = useMemo(() => (
+    "0xDf2eEe4b129EA759500c7aDbc748b09cE8487e9c" as `0x${string}`
   ), [])
 
   async function writeWithFallback(params: {
@@ -92,6 +97,57 @@ export default function AgentPage() {
     const whole = BigInt(parts[0] || "0")
     const frac = (parts[1] || "").replace(/[^0-9]/g, "").padEnd(18, "0").slice(0, 18)
     return whole * 10n ** 18n + BigInt(frac || "0")
+  }
+
+  // Helper function to switch networks
+  async function switchToNetwork(targetNetwork: string) {
+    const eth = (globalThis as any).ethereum
+    if (!eth) {
+      throw new Error("Wallet provider not found")
+    }
+
+    let chainId: string
+    let chainName: string
+    let nativeCurrency: { name: string; symbol: string; decimals: number }
+    let rpcUrls: string[]
+    let blockExplorerUrls: string[]
+
+    if (targetNetwork === "u2u") {
+      chainId = "0x27" // U2U Mainnet chainId 39
+      chainName = "U2U Solaris Mainnet"
+      nativeCurrency = { name: "U2U", symbol: "U2U", decimals: 18 }
+      rpcUrls = ["https://rpc-mainnet.u2u.xyz"]
+      blockExplorerUrls = ["https://u2uscan.xyz/"]
+    } else if (targetNetwork === "sepolia") {
+      chainId = "0xAA36A7" // Sepolia chainId 11155111
+      chainName = "Sepolia"
+      nativeCurrency = { name: "SepoliaETH", symbol: "ETH", decimals: 18 }
+      rpcUrls = ["https://ethereum-sepolia.publicnode.com"]
+      blockExplorerUrls = ["https://sepolia.etherscan.io"]
+    } else {
+      throw new Error("Unsupported network")
+    }
+
+    try {
+      await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId }] })
+    } catch (switchErr: any) {
+      if (switchErr?.code === 4902) {
+        await eth.request({
+          method: "wallet_addEthereumChain",
+          params: [
+            {
+              chainId,
+              chainName,
+              nativeCurrency,
+              rpcUrls,
+              blockExplorerUrls,
+            },
+          ],
+        })
+      } else {
+        throw switchErr
+      }
+    }
   }
 
   async function handleClaim(currentReward: number) {
@@ -135,7 +191,7 @@ export default function AgentPage() {
   function parseIntent(input: string):
     | { kind: "swap"; from: "U2U" | "BAZ"; toToken: "U2U" | "BAZ"; amount?: string }
     | { kind: "send"; token?: "BAZ" | "U2U"; to?: `0x${string}`; amount?: string }
-    | { kind: "bridge"; to?: `0x${string}`; amount?: string; fromNet?: "u2u" | "sepolia"; toNet?: "u2u" | "sepolia" }
+    | { kind: "bridge"; amount?: string; fromNet?: "u2u" | "sepolia"; toNet?: "u2u" | "sepolia" }
     | { kind: "unknown" } {
     const text = input.toLowerCase()
     const amountMatch = input.match(/(\d+\.?\d*)/)
@@ -165,11 +221,271 @@ export default function AgentPage() {
       return { kind: "send", token, to, amount }
     }
     if (hasBridge) {
-      const fromNet: "u2u" | "sepolia" | undefined = /from\s+u2u/.test(text) ? "u2u" : /from\s+sepolia/.test(text) ? "sepolia" : undefined
-      const toNet: "u2u" | "sepolia" | undefined = /to\s+u2u/.test(text) ? "u2u" : /to\s+sepolia/.test(text) ? "sepolia" : undefined
-      return { kind: "bridge", to, amount, fromNet, toNet }
+      // Enhanced bridge parsing for network detection
+      const fromNet: "u2u" | "sepolia" | undefined = 
+        /from\s+u2u/.test(text) ? "u2u" : 
+        /from\s+sepolia/.test(text) ? "sepolia" : 
+        /u2u\s+to\s+sepolia/.test(text) ? "u2u" :
+        /sepolia\s+to\s+u2u/.test(text) ? "sepolia" : undefined
+      
+      const toNet: "u2u" | "sepolia" | undefined = 
+        /to\s+u2u/.test(text) ? "u2u" : 
+        /to\s+sepolia/.test(text) ? "sepolia" :
+        /u2u\s+to\s+sepolia/.test(text) ? "sepolia" :
+        /sepolia\s+to\s+u2u/.test(text) ? "u2u" : undefined
+      
+      return { kind: "bridge", amount, fromNet, toNet }
     }
     return { kind: "unknown" }
+  }
+
+  async function bridgeFromU2UToSepolia(amount: number) {
+    const eth = (globalThis as any).ethereum
+    if (!eth) {
+      throw new Error("Wallet provider not found")
+    }
+
+    const provider = new ethers.BrowserProvider(eth)
+    const signer = await provider.getSigner()
+    const amountWei = ethers.parseEther(amount.toString())
+
+    // Check if we're on the correct network
+    const network = await provider.getNetwork()
+    if (Number(network.chainId) !== 39) {
+      throw new Error("Please switch to U2U network to bridge from U2U")
+    }
+
+    // Step 1: Approve bridge to spend tokens
+    const tokenContract = new ethers.Contract(U2U_TOKEN_ADDRESS, tokenAbi, signer)
+    const approveTx = await tokenContract.approve(U2U_BRIDGE_ADDRESS, amountWei)
+    await approveTx.wait()
+
+    // Step 2: Lock tokens in bridge
+    const bridgeContract = new ethers.Contract(U2U_BRIDGE_ADDRESS, bridgeAbi, signer)
+    const lockTx = await bridgeContract.lockTokens(amountWei)
+    const lockReceipt = await lockTx.wait()
+
+    // Extract the nonce from the TokensLocked event
+    const lockEvent = lockReceipt.logs.find((log: any) => {
+      try {
+        const parsed = bridgeContract.interface.parseLog(log)
+        return parsed?.name === "TokensLocked"
+      } catch {
+        return false
+      }
+    })
+
+    if (!lockEvent) {
+      throw new Error("Failed to find TokensLocked event")
+    }
+
+    const parsedEvent = bridgeContract.interface.parseLog(lockEvent)
+    const nonce = parsedEvent?.args.nonce
+
+    // Step 3: Switch to Sepolia and unlock tokens
+    const sepoliaChainId = "0xAA36A7" // Sepolia chainId 11155111
+    try {
+      await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: sepoliaChainId }] })
+    } catch (switchErr: any) {
+      if (switchErr?.code === 4902) {
+        await eth.request({
+          method: "wallet_addEthereumChain",
+          params: [
+            {
+              chainId: sepoliaChainId,
+              chainName: "Sepolia",
+              nativeCurrency: { name: "SepoliaETH", symbol: "ETH", decimals: 18 },
+              rpcUrls: ["https://ethereum-sepolia.publicnode.com"],
+              blockExplorerUrls: ["https://sepolia.etherscan.io"],
+            },
+          ],
+        })
+      } else {
+        throw switchErr
+      }
+    }
+
+    // Wait for network switch to complete
+    await new Promise(resolve => setTimeout(resolve, 3000))
+
+    // Verify we're on Sepolia
+    const sepoliaProvider = new ethers.BrowserProvider(eth)
+    const sepoliaNetwork = await sepoliaProvider.getNetwork()
+    
+    if (Number(sepoliaNetwork.chainId) !== 11155111) {
+      throw new Error("Failed to switch to Sepolia network")
+    }
+
+    // Step 4: Unlock tokens on Sepolia
+    const sepoliaSigner = await sepoliaProvider.getSigner()
+    const sepoliaBridgeContract = new ethers.Contract(SEPOLIA_BRIDGE_ADDRESS, sepoliaBridgeAbi.abi, sepoliaSigner)
+    
+    // Check bridge balance first
+    console.log("Checking Sepolia bridge balance...")
+    const bridgeBalance = await sepoliaBridgeContract.getBridgeBalance()
+    console.log("Sepolia bridge balance:", ethers.formatEther(bridgeBalance))
+    
+    if (bridgeBalance < amountWei) {
+      throw new Error(`Insufficient bridge balance. Bridge has ${ethers.formatEther(bridgeBalance)} BAZ, need ${ethers.formatEther(amountWei)} BAZ`)
+    }
+    
+    // Check if nonce is already processed
+    console.log("Checking if nonce is processed...")
+    const isProcessed = await sepoliaBridgeContract.isNonceProcessed(nonce)
+    console.log("Nonce processed:", isProcessed)
+    if (isProcessed) {
+      throw new Error("This nonce has already been processed")
+    }
+    
+    // Use selfUnlockTokens function (recommended for user-initiated unlocks)
+    try {
+      console.log("Attempting selfUnlockTokens with:", {
+        amount: ethers.formatEther(amountWei),
+        nonce: nonce.toString(),
+        user: address
+      })
+      
+      const selfUnlockTx = await sepoliaBridgeContract.selfUnlockTokens(amountWei, nonce)
+      console.log("Self-unlock transaction sent:", selfUnlockTx.hash)
+      await selfUnlockTx.wait()
+      console.log("Self-unlock transaction confirmed:", selfUnlockTx.hash)
+    } catch (selfUnlockError: any) {
+      console.log("Self-unlock failed, trying unlockTokens...", selfUnlockError)
+      
+      // Try unlockTokens as fallback
+      try {
+        console.log("Attempting unlockTokens with:", {
+          user: address,
+          amount: ethers.formatEther(amountWei),
+          nonce: nonce.toString()
+        })
+        
+        const unlockTx = await sepoliaBridgeContract.unlockTokens(address, amountWei, nonce)
+        console.log("Unlock transaction sent:", unlockTx.hash)
+        await unlockTx.wait()
+        console.log("Unlock transaction confirmed:", unlockTx.hash)
+      } catch (unlockError: any) {
+        console.log("Both unlock methods failed:", unlockError)
+        throw new Error(`Failed to unlock tokens: ${unlockError?.shortMessage || unlockError?.message || "Unknown error"}`)
+      }
+    }
+  }
+
+  async function bridgeFromSepoliaToU2U(amount: number) {
+    const eth = (globalThis as any).ethereum
+    if (!eth) {
+      throw new Error("Wallet provider not found")
+    }
+
+    const provider = new ethers.BrowserProvider(eth)
+    const signer = await provider.getSigner()
+    const amountWei = ethers.parseEther(amount.toString())
+
+    // Check if we're on the correct network
+    const network = await provider.getNetwork()
+    if (Number(network.chainId) !== 11155111) {
+      throw new Error("Please switch to Sepolia network to bridge from Sepolia")
+    }
+
+    // Step 1: Approve bridge to spend tokens
+    const tokenContract = new ethers.Contract(SEPOLIA_TOKEN_ADDRESS, tokenAbi, signer)
+    const approveTx = await tokenContract.approve(SEPOLIA_BRIDGE_ADDRESS, amountWei)
+    await approveTx.wait()
+
+    // Step 2: Lock tokens in bridge
+    const bridgeContract = new ethers.Contract(SEPOLIA_BRIDGE_ADDRESS, sepoliaBridgeAbi.abi, signer)
+    const lockTx = await bridgeContract.lockTokens(amountWei)
+    const lockReceipt = await lockTx.wait()
+
+    // Extract the nonce from the TokensLocked event
+    const lockEvent = lockReceipt.logs.find((log: any) => {
+      try {
+        const parsed = bridgeContract.interface.parseLog(log)
+        return parsed?.name === "TokensLocked"
+      } catch {
+        return false
+      }
+    })
+
+    if (!lockEvent) {
+      throw new Error("Failed to find TokensLocked event")
+    }
+
+    const parsedEvent = bridgeContract.interface.parseLog(lockEvent)
+    const nonce = parsedEvent?.args.nonce
+
+    // Step 3: Switch to U2U and unlock tokens
+    const u2uChainId = "0x27" // U2U Mainnet chainId 39
+    try {
+      await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: u2uChainId }] })
+    } catch (switchErr: any) {
+      if (switchErr?.code === 4902) {
+        await eth.request({
+          method: "wallet_addEthereumChain",
+          params: [
+            {
+              chainId: u2uChainId,
+              chainName: "U2U Solaris Mainnet",
+              nativeCurrency: { name: "U2U", symbol: "U2U", decimals: 18 },
+              rpcUrls: ["https://rpc-mainnet.u2u.xyz"],
+              blockExplorerUrls: ["https://u2uscan.xyz/"],
+            },
+          ],
+        })
+      } else {
+        throw switchErr
+      }
+    }
+
+    // Step 4: Unlock tokens on U2U
+    const u2uProvider = new ethers.BrowserProvider(eth)
+    const u2uSigner = await u2uProvider.getSigner()
+    const u2uBridgeContract = new ethers.Contract(U2U_BRIDGE_ADDRESS, sepoliaBridgeAbi.abi, u2uSigner)
+    
+    // Check bridge balance first
+    const bridgeBalance = await u2uBridgeContract.getBridgeBalance()
+    console.log("U2U bridge balance:", ethers.formatEther(bridgeBalance))
+    
+    if (bridgeBalance < amountWei) {
+      throw new Error(`Insufficient bridge balance. Bridge has ${ethers.formatEther(bridgeBalance)} BAZ, need ${ethers.formatEther(amountWei)} BAZ`)
+    }
+    
+    // Check if nonce is already processed
+    const isProcessed = await u2uBridgeContract.isNonceProcessed(nonce)
+    console.log("Nonce processed:", isProcessed)
+    if (isProcessed) {
+      throw new Error("This nonce has already been processed")
+    }
+    
+    // Use selfUnlockTokens function (recommended for user-initiated unlocks)
+    try {
+      console.log("Attempting selfUnlockTokens with:", {
+        amount: ethers.formatEther(amountWei),
+        nonce: nonce.toString()
+      })
+      
+      const selfUnlockTx = await u2uBridgeContract.selfUnlockTokens(amountWei, nonce)
+      await selfUnlockTx.wait()
+      console.log("Self-unlock transaction confirmed:", selfUnlockTx.hash)
+    } catch (selfUnlockError: any) {
+      console.log("Self-unlock failed, trying unlockTokens...", selfUnlockError)
+      
+      // Try unlockTokens as fallback
+      try {
+        console.log("Attempting unlockTokens with:", {
+          user: address,
+          amount: ethers.formatEther(amountWei),
+          nonce: nonce.toString()
+        })
+        
+        const unlockTx = await u2uBridgeContract.unlockTokens(address, amountWei, nonce)
+        await unlockTx.wait()
+        console.log("Unlock transaction confirmed:", unlockTx.hash)
+      } catch (unlockError: any) {
+        console.log("Both unlock methods failed:", unlockError)
+        throw new Error(`Failed to unlock tokens: ${unlockError?.shortMessage || unlockError?.message || "Unknown error"}`)
+      }
+    }
   }
 
   const scrollToBottom = () => {
@@ -287,91 +603,23 @@ export default function AgentPage() {
       setMessages((prev) => [...prev, performing])
       try {
         if (!isConnected || !address) throw new Error("Wallet not connected")
-        const amtStr = (intent.amount || "0").split(".")[0]
-        if (!amtStr || amtStr === "0") throw new Error("Enter a whole-number amount")
+        const amount = parseFloat(intent.amount)
+        if (amount <= 0) throw new Error("Amount must be greater than 0")
 
         if (intent.fromNet === "u2u" && intent.toNet === "sepolia") {
-          // Step 1: on U2U, call send to bridge intermediate
-          const hash1 = await writeWithFallback({
-            abi: tokenAbi as any,
-            functionName: "send",
-            address: BRIDGE_U2U_TOKEN,
-            args: [BRIDGE_INTERMEDIATE, amtStr],
-          })
-          await publicClient?.waitForTransactionReceipt({ hash: hash1 })
-
-          // Step 2: switch to Sepolia and mint to user
-          const eth = (globalThis as any).ethereum
-          if (!eth) throw new Error("Wallet provider not found")
-          const targetChainIdHex = "0xaa36a7" // Sepolia 11155111
-          try {
-            await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: targetChainIdHex }] })
-          } catch (switchErr: any) {
-            if (switchErr?.code === 4902) {
-              await eth.request({
-                method: "wallet_addEthereumChain",
-                params: [{
-                  chainId: targetChainIdHex,
-                  chainName: "Sepolia",
-                  nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
-                  rpcUrls: ["https://rpc.sepolia.org"],
-                  blockExplorerUrls: ["https://sepolia.etherscan.io"],
-                }],
-              })
-            } else throw switchErr
-          }
-          const browserProvider = new ethers.BrowserProvider(eth)
-          const signer = await browserProvider.getSigner()
-          const recipient = (address as `0x${string}`) || (await signer.getAddress())
-          const contract2 = new ethers.Contract(BRIDGE_SEPOLIA_TOKEN, propabi2 as any, signer)
-          const tx2 = await contract2.mint(recipient, amtStr)
-          await tx2.wait()
-          setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: `Bridged ${amtStr} BAZ from U2U → Sepolia` }])
+          // Bridge from U2U to Sepolia
+          await bridgeFromU2UToSepolia(amount)
+          setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: `Bridged ${intent.amount} BAZ from U2U → Sepolia` }])
           setReward(Math.floor(Math.random() * 10) + 1)
           setOpenCongrats(true)
         } else if (intent.fromNet === "sepolia" && intent.toNet === "u2u") {
-          // Reverse: on Sepolia, send to intermediate, then switch to U2U and mint
-          const eth = (globalThis as any).ethereum
-          if (!eth) throw new Error("Wallet provider not found")
-          // Ensure Sepolia
-          const sepoliaHex = "0xaa36a7"
-          try {
-            await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: sepoliaHex }] })
-          } catch {}
-          const browserProvider = new ethers.BrowserProvider(eth)
-          const signer = await browserProvider.getSigner()
-          const token2 = new ethers.Contract(BRIDGE_SEPOLIA_TOKEN, propabi2 as any, signer)
-          const txA = await token2.send(BRIDGE_INTERMEDIATE, amtStr)
-          await txA.wait()
-          // Switch to U2U (chainId 39 -> 0x27)
-          const u2uHex = "0x27"
-          try {
-            await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: u2uHex }] })
-          } catch (switchErr: any) {
-            if (switchErr?.code === 4902) {
-              await eth.request({
-                method: "wallet_addEthereumChain",
-                params: [{
-                  chainId: u2uHex,
-                  chainName: "U2U Solaris Mainnet",
-                  nativeCurrency: { name: "U2U", symbol: "U2U", decimals: 18 },
-                  rpcUrls: ["https://rpc-mainnet.u2u.xyz"],
-                  blockExplorerUrls: ["https://u2uscan.xyz/"],
-                }],
-              })
-            } else throw switchErr
-          }
-          const providerU = new ethers.BrowserProvider(eth)
-          const signerU = await providerU.getSigner()
-          const tokenU = new ethers.Contract(BRIDGE_U2U_TOKEN, tokenAbi as any, signerU)
-          const recipientU = await signerU.getAddress()
-          const txU = await tokenU.mint(recipientU, amtStr)
-          await txU.wait()
-          setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: `Bridged ${amtStr} BAZ from Sepolia → U2U` }])
+          // Bridge from Sepolia to U2U
+          await bridgeFromSepoliaToU2U(amount)
+          setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: `Bridged ${intent.amount} BAZ from Sepolia → U2U` }])
           setReward(Math.floor(Math.random() * 10) + 1)
           setOpenCongrats(true)
         } else {
-          setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: "Specify networks like: bridge 10 baz from u2u to sepolia" }])
+          setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: "Specify networks like: bridge 10 BAZ from u2u to sepolia or bridge 5 BAZ from sepolia to u2u" }])
         }
       } catch (e: any) {
         setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: e?.message || "Bridge failed" }])
