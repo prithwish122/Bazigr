@@ -19,7 +19,7 @@ const games: Game[] = [
     key: "circle",
     name: "Draw Perfect Circle",
     poster: "/images/circle.png",
-    tokens: 5,
+    tokens: 10,
     href: "#", // hook up later if needed
   },
   {
@@ -84,7 +84,7 @@ export default function MiniGamesPage() {
                     className="px-2 py-1 rounded-md text-xs font-medium"
                     style={{ background: "rgba(255,255,255,0.08)" }}
                   >
-                    5 BAZ
+                    {game.tokens} BAZ
                   </span>
                 </div>
 

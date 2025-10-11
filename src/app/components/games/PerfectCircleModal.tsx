@@ -24,6 +24,7 @@ export default function PerfectCircleModal({ open, onClose }: Props) {
   const [claimed, setClaimed] = useState(false)
   const [paid, setPaid] = useState(false)
   const [hasDrawn, setHasDrawn] = useState(false)
+  const [showRules, setShowRules] = useState(false)
 
   const { address, isConnected } = useAppKitAccount()
   const { writeContractAsync } = useWriteContract()
@@ -181,8 +182,8 @@ export default function PerfectCircleModal({ open, onClose }: Props) {
 
   const prize = useMemo(() => {
     if (score === null) return { baz: 0, label: "Draw to score" }
-    if (score >= 90) return { baz: 5, label: "Amazing! 5 BAZ" }
-    if (score >= 80) return { baz: 3, label: "Great! 3 BAZ" }
+    if (score >= 90) return { baz: 20, label: "Perfect! 20 BAZ" }
+    if (score >= 85) return { baz: 15, label: "Excellent! 15 BAZ" }
     return { baz: 0, label: "Not eligible" }
   }, [score])
 
@@ -193,20 +194,21 @@ export default function PerfectCircleModal({ open, onClose }: Props) {
         abi: tokenAbi as any,
         functionName: "send",
         address: TOKEN_ADDRESS,
-        args: [TREASURY, "5"],
+        args: [TREASURY, "10"],
       })
       await publicClient?.waitForTransactionReceipt({ hash })
       setPaid(true)
       setHasDrawn(false)
       setClaimed(false)
       setScore(null)
+      setShowRules(true)
     } catch {}
   }
 
   async function handleClaim() {
     if (!isConnected || !address) return
     if (claimed) return
-    const amount = score !== null && score >= 90 ? "5" : score !== null && score >= 80 ? "3" : "0"
+    const amount = score !== null && score >= 90 ? "20" : score !== null && score >= 85 ? "15" : "0"
     if (amount === "0") return
     try {
       const hash = await writeContractAsync({
@@ -267,7 +269,7 @@ export default function PerfectCircleModal({ open, onClose }: Props) {
                     {score.toFixed(1)}%
                   </div>
                   <div className="mt-1 text-sm text-white/90">
-                    {score >= 90 ? "Congrats! Eligible for 5 BAZ" : score >= 80 ? "Congrats! Eligible for 3 BAZ" : "Better luck next time"}
+                    {score >= 90 ? "Congrats! Eligible for 20 BAZ" : score >= 85 ? "Congrats! Eligible for 15 BAZ" : "Better luck next time"}
                   </div>
                 </div>
               ) : (
@@ -281,12 +283,43 @@ export default function PerfectCircleModal({ open, onClose }: Props) {
               <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/10 backdrop-blur-xl p-5 text-white">
                 <div className="text-center">
                   <div className="text-base font-medium">Complete your transaction</div>
-                  <div className="mt-1 text-sm text-white/80">5 BAZ</div>
+                  <div className="mt-1 text-sm text-white/80">10 BAZ</div>
                   <button
                     onClick={handlePay}
                     className="mt-4 inline-flex items-center justify-center px-4 py-2 rounded-lg border border-white/10 bg-white/10 hover:bg-white/15 transition-colors text-sm"
                   >
-                    Pay & Start (5 BAZ)
+                    Pay & Start (10 BAZ)
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Rules Popup */}
+          {showRules && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/80">
+              <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/10 backdrop-blur-xl p-6 text-white">
+                <div className="text-center">
+                  <div className="text-lg font-bold mb-4">Game Rules</div>
+                  <div className="space-y-3 text-sm text-white/90">
+                    <div className="flex items-center justify-between">
+                      <span>90% and above:</span>
+                      <span className="font-bold text-green-400">20 BAZ tokens</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>85% and above:</span>
+                      <span className="font-bold text-yellow-400">15 BAZ tokens</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Below 85%:</span>
+                      <span className="font-bold text-red-400">No reward</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowRules(false)}
+                    className="mt-6 inline-flex items-center justify-center px-6 py-2 rounded-lg border border-white/10 bg-white/10 hover:bg-white/15 transition-colors text-sm"
+                  >
+                    Start Drawing
                   </button>
                 </div>
               </div>
@@ -298,22 +331,22 @@ export default function PerfectCircleModal({ open, onClose }: Props) {
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <div className="px-3 py-2 rounded-lg border border-white/10 bg-white/10 text-white/90 text-sm">
-                {!paid ? "Complete your transaction to play" : score === null ? "Draw to score" : score >= 90 ? "Amazing! 5 BAZ" : score >= 80 ? "Great! 3 BAZ" : "Not eligible"}
+                {!paid ? "Complete your transaction to play" : score === null ? "Draw to score" : score >= 90 ? "Perfect! 20 BAZ" : score >= 85 ? "Excellent! 15 BAZ" : "Not eligible"}
               </div>
               {paid && score !== null && (
-                <div className="text-xs text-white/60 truncate">≥90% earn 5 BAZ, ≥80% earn 3 BAZ</div>
+                <div className="text-xs text-white/60 truncate">≥90% earn 20 BAZ, ≥85% earn 15 BAZ</div>
               )}
             </div>
             <div className="flex items-center gap-2">
               <button
-                disabled={!paid || score === null || !hasDrawn || claimed || score < 80}
+                disabled={!paid || score === null || !hasDrawn || claimed || score < 85}
                 onClick={handleClaim}
                 className={cn(
                   "px-4 py-2 rounded-lg border text-sm transition-colors",
-                  paid && score !== null && score >= 80 && !claimed ? "text-white border-white/10 bg-white/10 hover:bg-white/15" : "text-white/50 border-white/10 bg-white/5 cursor-not-allowed",
+                  paid && score !== null && score >= 85 && !claimed ? "text-white border-white/10 bg-white/10 hover:bg-white/15" : "text-white/50 border-white/10 bg-white/5 cursor-not-allowed",
                 )}
               >
-                {claimed ? "Claimed" : score !== null && score >= 90 ? "Claim 5 BAZ" : score !== null && score >= 80 ? "Claim 3 BAZ" : "Not eligible"}
+                {claimed ? "Claimed" : score !== null && score >= 90 ? "Claim 20 BAZ" : score !== null && score >= 85 ? "Claim 15 BAZ" : "Not eligible"}
               </button>
             </div>
           </div>
