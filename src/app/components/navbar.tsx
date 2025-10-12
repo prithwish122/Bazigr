@@ -30,7 +30,12 @@ export function Navbar() {
         >
           {/* left logo + wordmark */}
           <div className="flex items-center gap-2 pl-1">
-            <span aria-hidden className="logo-dot" style={{ width: 22, height: 22 }} />
+            <img 
+              src="/images/logo.png" 
+              alt="Bazigr Logo" 
+              className="w-[50px] h-[50px] object-contain flex-shrink-0"
+              style={{ width: 50, height: 50, minWidth: 50, minHeight: 50 }}
+            />
             <span className="text-sm md:text-base tracking-wide opacity-95">Bazigr</span>
           </div>
 
