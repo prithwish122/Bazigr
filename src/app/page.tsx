@@ -6,6 +6,7 @@ import FAQ from "./components/faq"
 import HowItWorks from "./components/Howitworks"
 import { Navbar } from "./components/navbar"
 import WhyChooseUs from "./components/Whychooseus"
+import Companies from "./components/companies"
 
 export default function Page() {
   return (
@@ -28,6 +29,7 @@ export default function Page() {
           </motion.button>
         </Link>
       </section>
+      <Companies />
       <ExpandableCards />
       <WhyChooseUs/>
       <HowItWorks />
